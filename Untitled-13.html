@@ -1,0 +1,911 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Desk Fan Assembly with Movable Components</title>
+    <style>
+        :root {
+            --blade-rotation: 0deg;
+            --vibrate-speed: 0s;
+            --indicator-color: #4b5563;
+            --tilt-x: -12deg;
+            --rotate-y: -25deg;
+            --magnetic-glow: rgba(76, 217, 100, 0);
+        }
+
+        body {
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start;
+            align-items: center;
+            min-height: 100vh;
+            background: radial-gradient(circle at center, #f5f6fa, #bdc3c7);
+            margin: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            user-select: none;
+            perspective: 1500px;
+            overflow-x: hidden;
+            box-sizing: border-box;
+            padding: 10px;
+        }
+
+        /* --- CONTROL PANEL --- */
+        .dashboard {
+            width: 100%;
+            max-width: 850px;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            margin-top: 10px;
+            padding: 15px;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            align-items: center;
+            z-index: 100;
+            box-sizing: border-box;
+            border: 1px solid rgba(255,255,255,0.6);
+        }
+
+        .dash-group {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 6px;
+            text-align: center;
+        }
+
+        .dash-label {
+            font-size: 11px;
+            font-weight: 800;
+            text-transform: uppercase;
+            color: #7f8c8d;
+            letter-spacing: 0.8px;
+        }
+
+        .dash-btn {
+            width: 100%;
+            max-width: 180px;
+            padding: 10px 15px;
+            font-size: 12px;
+            font-weight: bold;
+            border: 2px solid #e1e2e6;
+            background: #f8f9fa;
+            color: #2c3e50;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.25s ease;
+            text-transform: uppercase;
+        }
+
+        .dash-btn.active-state {
+            background: #2c3e50;
+            color: #fff;
+            border-color: #2c3e50;
+        }
+
+        .speed-group {
+            display: flex;
+            gap: 6px;
+            justify-content: center;
+            width: 100%;
+        }
+
+        .speed-group .dash-btn {
+            width: 40px;
+            padding: 10px 0;
+        }
+
+        .hint-text {
+            font-size: 12px;
+            color: #34495e;
+            margin: 8px 0;
+            text-align: center;
+            background: rgba(255, 255, 255, 0.7);
+            padding: 8px 16px;
+            border-radius: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            max-width: 90%;
+            line-height: 1.4;
+        }
+
+        /* --- APPLICATION ENVIRONMENT VIEWPORT --- */
+        .viewport-3d {
+            flex: 1;
+            width: 100%;
+            max-width: 1200px;
+            min-height: 550px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+        }
+
+        .scene-3d {
+            width: 100%;
+            height: 100%;
+            min-height: 500px;
+            position: relative;
+            transform-style: preserve-3d;
+            transform: rotateX(var(--tilt-x)) rotateY(var(--rotate-y));
+            transition: transform 0.1s ease-out;
+        }
+
+        /* --- INTERACTIVE MOVABLE PACKAGES --- */
+        .movable-component {
+            position: absolute;
+            transform-style: preserve-3d;
+        }
+
+        .movable-component.draggable-active {
+            cursor: move !important;
+        }
+
+        .movable-component::before {
+            content: 'Double-Click to Move';
+            position: absolute;
+            top: -35px;
+            left: 50%;
+            transform: translateX(-50%) translateZ(60px);
+            background: rgba(44, 62, 80, 0.9);
+            color: white;
+            padding: 5px 12px;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 600;
+            white-space: nowrap;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            pointer-events: none;
+        }
+
+        .movable-component:hover::before {
+            opacity: 1;
+        }
+
+        .movable-component.draggable-active::before {
+            content: 'Dragging Mode Active';
+            background: #d35400;
+            opacity: 1;
+        }
+
+        /* Fixed Wall Unit Container Exception Design */
+        .static-wall-component {
+            position: absolute;
+            transform-style: preserve-3d;
+            left: 8%;
+            top: 20%;
+        }
+
+        /* --- WALL SOCKET MODULE --- */
+        .wall-panel {
+            width: 160px;
+            height: 220px;
+            background: #ffffff;
+            border-radius: 16px;
+            box-shadow: 5px 10px 30px rgba(0,0,0,0.15), inset -2px -2px 6px rgba(0,0,0,0.05);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: space-around;
+            padding: 20px 0;
+            box-sizing: border-box;
+            border: 1px solid #e6e8eb;
+            transform-style: preserve-3d;
+        }
+
+        /* Switch on Wall Facing Front-Side View */
+        .socket-switch {
+            width: 34px;
+            height: 48px;
+            background: #cbd5e1;
+            border-radius: 6px;
+            position: relative;
+            box-shadow: inset 0 3px 6px rgba(0,0,0,0.2);
+            cursor: pointer;
+            perspective: 100px;
+            z-index: 50;
+        }
+
+        .switch-toggle {
+            width: 100%;
+            height: 24px;
+            background: linear-gradient(to bottom, #ffffff, #f1f2f6);
+            border-radius: 4px;
+            position: absolute;
+            top: 2px; /* Rest positions in top half */
+            box-shadow: 0 3px 6px rgba(0,0,0,0.2);
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            transform-origin: bottom center;
+            transform: rotateX(10deg);
+        }
+
+        /* ON State: Flips towards lower half with red indicator */
+        .socket-switch.on-state .switch-toggle {
+            top: 22px;
+            background: linear-gradient(to bottom, #ff4d4d, #ff1a1a);
+            box-shadow: 0 4px 10px rgba(255, 26, 26, 0.4);
+            transform-origin: top center;
+            transform: rotateX(-10deg);
+        }
+
+        .socket-outlets {
+            width: 80px;
+            height: 80px;
+            background: #f1f2f6;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+            border: 1px solid #dcdde1;
+            box-shadow: inset 0 4px 8px rgba(0,0,0,0.08);
+            cursor: pointer;
+        }
+
+        .pin-hole { 
+            width: 8px; height: 14px; background: #1e272e; border-radius: 3px; position: absolute;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.5); pointer-events: none;
+        }
+        .pin-hole.earth { top: 16px; left: 36px; width: 12px; height: 8px; }
+        .pin-hole.live { bottom: 22px; right: 20px; }
+        .pin-hole.neutral { bottom: 22px; left: 20px; }
+
+        /* --- MOVABLE EXTENSION CABLE PLUG ADAPTER --- */
+        .plug {
+            width: 56px;
+            height: 56px;
+            background: #2f3542;
+            border-radius: 12px 12px 24px 24px;
+            position: absolute;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transform-style: preserve-3d;
+            z-index: 5;
+        }
+        .plug.unplugged-state { cursor: grab; }
+        .plug.unplugged-state:active { cursor: grabbing; }
+        .plug.plugged-state { cursor: pointer; z-index: 15; transform: translate3d(0px, 0px, 5px) !important; }
+        .plug-wire-stub { width: 12px; height: 25px; background: #57606f; position: absolute; bottom: -20px; border-radius: 4px; }
+        
+        .plug-pins { position: absolute; width: 100%; height: 100%; transform: translateZ(-15px); pointer-events: none; }
+        .plug.plugged-state .plug-pins { display: none; }
+        .metal-prong { position: absolute; width: 7px; height: 13px; background: linear-gradient(to bottom, #f1f2f6, #747d8c); border-radius: 2px; }
+        .metal-prong.e { top: 10px; left: 24.5px; width: 11px; height: 7px; }
+        .metal-prong.l { bottom: 16px; right: 14px; }
+        .metal-prong.n { bottom: 16px; left: 14px; }
+
+        .cable-svg { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 4; }
+
+        /* --- FAN DEVICE MODEL --- */
+        .fan-3d-model {
+            transform-style: preserve-3d;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .fan-head-assembly {
+            position: relative;
+            animation: vibrate var(--vibrate-speed) linear infinite;
+            transform-style: preserve-3d;
+            z-index: 4;
+        }
+
+        .cage {
+            width: 280px;
+            height: 280px;
+            border: 6px solid #b2bec3;
+            border-radius: 50%;
+            position: relative;
+            box-shadow: 0 15px 40px rgba(0,0,0,0.15);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            transform-style: preserve-3d;
+        }
+
+        .grill-mesh, .grill-mesh-rear {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            pointer-events: none;
+        }
+        .grill-mesh { transform: translateZ(15px); }
+        .grill-mesh-rear { transform: translateZ(-15px); }
+
+        .spoke {
+            position: absolute;
+            width: 100%;
+            height: 2px;
+            background: rgba(149, 165, 166, 0.4);
+            top: 50%;
+            transform-origin: center center;
+        }
+        .spoke-1  { transform: rotate(0deg); }
+        .spoke-2  { transform: rotate(45deg); }
+        .spoke-3  { transform: rotate(90deg); }
+        .spoke-4  { transform: rotate(135deg); }
+
+        .blade-assembly {
+            width: 250px;
+            height: 250px;
+            position: relative;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            transform: rotate(var(--blade-rotation)) translateZ(5px);
+            transform-style: preserve-3d;
+        }
+
+        .blade {
+            position: absolute;
+            width: 70px;
+            height: 115px;
+            background: linear-gradient(135deg, #2980b9, #2c3e50);
+            opacity: 0.92;
+            border-radius: 50% 50% 45% 45% / 35% 35% 65% 65%;
+            transform-origin: bottom center;
+            box-shadow: inset -6px 0 12px rgba(0,0,0,0.2);
+        }
+        .blade-1 { transform: translateY(-57px) rotate(0deg); }
+        .blade-2 { transform: translateY(-57px) rotate(120deg); }
+        .blade-3 { transform: translateY(-57px) rotate(240deg); }
+
+        .center-cap {
+            position: absolute;
+            width: 50px;
+            height: 50px;
+            background: #f1f2f6;
+            border: 3px solid #ced4da;
+            border-radius: 50%;
+            transform: translateZ(22px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+        }
+
+        /* --- MOTOR STRUCTURAL FRAME HOUSING --- */
+        .electric-motor-housing {
+            position: absolute;
+            width: 100px;
+            height: 110px;
+            background: linear-gradient(to right, #ffffff 0%, #f1f2f6 30%, #e4e7eb 70%, #cbd5e1 100%);
+            border-radius: 50px / 15px;
+            transform: translateZ(-70px); 
+            transform-style: preserve-3d;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.3);
+            border: 1px solid #b2bec3;
+        }
+
+        .motor-mount-bracket {
+            position: absolute;
+            width: 130px;
+            height: 12px;
+            background: #95a5a6;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) translateZ(-20px);
+            border-radius: 4px;
+            border: 1px solid #7f8c8d;
+        }
+        .motor-mount-bracket.vertical { transform: translate(-50%, -50%) rotate(90deg) translateZ(-20px); }
+
+        .motor-cap-back {
+            position: absolute;
+            width: 100%;
+            height: 24px;
+            background: #7f8c8d;
+            bottom: 0;
+            border-radius: 0 0 50px 50px / 0 0 15px 15px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-around;
+            align-items: center;
+            padding: 4px 0;
+            box-sizing: border-box;
+            border-top: 1px solid #616a6b;
+        }
+        
+        .cap-vent-line { width: 65%; height: 2px; background: #2c3e50; border-radius: 1px; }
+
+        /* --- SPEED STEP CONTROL INTERFACE --- */
+        .neck {
+            width: 62px;
+            height: 175px;
+            background: linear-gradient(to right, #ffffff, #e1e2e6, #b2bec3);
+            margin-top: -4px;
+            clip-path: polygon(20% 0%, 80% 0%, 100% 100%, 0% 100%);
+            position: relative;
+            z-index: 2;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: space-between;
+            padding: 22px 0;
+            box-sizing: border-box;
+        }
+
+        .indicator {
+            width: 10px; height: 10px; background-color: var(--indicator-color); border-radius: 50%;
+            box-shadow: 0 0 12px var(--indicator-color); transition: all 0.25s ease;
+        }
+
+        .btn-panel-vertical {
+            display: flex; flex-direction: column; gap: 8px; background: rgba(0, 0, 0, 0.1);
+            padding: 12px 8px; border-radius: 24px; box-shadow: inset 0 2px 6px rgba(0,0,0,0.2); z-index: 60;
+        }
+
+        /* Buttons responsive on direct tap interaction area only */
+        .btn-panel-vertical button {
+            width: 28px; height: 28px; border: 1px solid #7f8c8d; border-radius: 50%;
+            background: linear-gradient(to bottom, #ffffff, #e4e7eb); font-size: 11px; font-weight: bold;
+            color: #2c3e50; cursor: pointer; outline: none; box-shadow: 0 2px 4px rgba(0,0,0,0.15);
+            position: relative; pointer-events: auto; z-index: 70;
+        }
+
+        .btn-panel-vertical button.active {
+            background: linear-gradient(to bottom, #bdc3c7, #7f8c8d); color: #fff; box-shadow: inset 0 3px 5px rgba(0,0,0,0.3);
+        }
+
+        .base-group { display: flex; flex-direction: column; align-items: center; margin-top: -12px; z-index: 1; transform-style: preserve-3d; }
+        .base-top { width: 180px; height: 18px; background: linear-gradient(to right, #f8f9fa, #e1e2e6, #b2bec3); border-radius: 100px / 18px; }
+        .base-bottom { width: 240px; height: 24px; background: linear-gradient(to bottom, #e1e2e6, #7f8c8d, #2c3e50); border-radius: 100px / 24px; margin-top: -10px; box-shadow: 0 15px 30px rgba(0,0,0,0.25); }
+
+        @media (max-width: 768px) {
+            .scene-3d { transform: scale(0.7) rotateX(var(--tilt-x)) rotateY(var(--rotate-y)); }
+            .dashboard { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="dashboard">
+        <div class="dash-group">
+            <div class="dash-label">Power Attachment</div>
+            <button class="dash-btn" id="dashPlugBtn" onclick="togglePlugAction()">Plug In</button>
+        </div>
+        <div class="dash-group">
+            <div class="dash-label">Wall Socket Switch</div>
+            <button class="dash-btn" id="dashSwitchBtn" onclick="toggleSwitchAction()">Turn ON</button>
+        </div>
+        <div class="dash-group">
+            <div class="dash-label">Rotational Fan Speed</div>
+            <div class="speed-group">
+                <button class="dash-btn speed-btn active-state" id="dashSpeedBtn0" onclick="setSpeedEngine(0, event)">0</button>
+                <button class="dash-btn speed-btn" id="dashSpeedBtn1" onclick="setSpeedEngine(1, event)">1</button>
+                <button class="dash-btn speed-btn" id="dashSpeedBtn2" onclick="setSpeedEngine(2, event)">2</button>
+                <button class="dash-btn speed-btn" id="dashSpeedBtn3" onclick="setSpeedEngine(3, event)">3</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="hint-text">
+        📐 <b>Orientation Note:</b> The wall socket is completely stationary and faces the front room profile.<br>
+        🖱️ <b>Double-Click to Move:</b> Toggle independent spatial dragging for the <b>Fan</b> or the <b>Draggable Cord Plug</b>.
+    </div>
+
+    <div class="viewport-3d" id="viewport">
+        <svg class="cable-svg">
+            <path id="cablePath" d="" fill="none" stroke="#1e272e" stroke-width="7" stroke-linecap="round"/>
+        </svg>
+
+        <div class="scene-3d" id="scene">
+            
+            <div class="static-wall-component" id="staticSocketContainer">
+                <div class="wall-panel" id="wallPanel">
+                    <div class="socket-switch" id="wallSwitch" onclick="toggleSwitchAction(event)">
+                        <div class="switch-toggle"></div>
+                    </div>
+                    <div class="socket-outlets" id="targetSocket" onclick="togglePlugAction(event)">
+                        <div class="pin-hole earth"></div>
+                        <div class="pin-hole live"></div>
+                        <div class="pin-hole neutral"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="plug unplugged-state" id="powerPlug" style="left: 250px; top: 380px;">
+                <div class="plug-wire-stub"></div>
+                <div class="plug-pins">
+                    <div class="metal-prong e"></div>
+                    <div class="metal-prong l"></div>
+                    <div class="metal-prong n"></div>
+                </div>
+            </div>
+
+            <div class="movable-component" id="wrapFan" style="left: 55%; top: 15%;">
+                <div class="fan-3d-model" id="fanBody">
+                    <div class="fan-head-assembly" id="fanHead">
+                        <div class="cage">
+                            <div class="grill-mesh">
+                                <div class="spoke spoke-1"></div><div class="spoke spoke-2"></div>
+                                <div class="spoke spoke-3"></div><div class="spoke spoke-4"></div>
+                            </div>
+
+                            <div class="blade-assembly" id="fanBlades">
+                                <div class="blade blade-1"></div>
+                                <div class="blade blade-2"></div>
+                                <div class="blade blade-3"></div>
+                            </div>
+                            <div class="center-cap"></div>
+
+                            <div class="grill-mesh-rear">
+                                <div class="spoke spoke-1"></div><div class="spoke spoke-2"></div>
+                                <div class="spoke spoke-3"></div><div class="spoke spoke-4"></div>
+                            </div>
+
+                            <div class="motor-mount-bracket horizontal"></div>
+                            <div class="motor-mount-bracket vertical"></div>
+                            <div class="electric-motor-housing">
+                                <div class="motor-cap-back">
+                                    <div class="cap-vent-line"></div>
+                                    <div class="cap-vent-line"></div>
+                                    <div class="cap-vent-line"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="neck">
+                        <div class="indicator" id="statusLight"></div>
+                        <div class="btn-panel-vertical">
+                            <button id="fanBtn0" class="active" onclick="setSpeedEngine(0, event)">0</button>
+                            <button id="fanBtn1" onclick="setSpeedEngine(1, event)">1</button>
+                            <button id="fanBtn2" onclick="setSpeedEngine(2, event)">2</button>
+                            <button id="fanBtn3" onclick="setSpeedEngine(3, event)">3</button>
+                        </div>
+                    </div>
+
+                    <div class="base-group">
+                        <div class="base-top"></div>
+                        <div class="base-bottom" id="fanBase"></div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        const root = document.documentElement;
+
+        // Functional State Machine Values
+        let isPluggedIn = false;
+        let isSocketOn = false;
+        let selectedSpeed = 0;
+
+        let currentRotation = 0;
+        let currentSpeed = 0;   
+        let targetSpeed = 0;    
+        const acceleration = 0.15; 
+        const deceleration = 0.05;
+
+        let audioCtx = null, biquadFilter = null, gainNode = null, noiseSource = null;
+
+        // Workspace Navigation Vectors
+        let isDraggingBackground = false, previousX = 0, previousY = 0;
+        let currentRotateY = -25, currentTiltX = -12;
+
+        // Cord Plug Core Coordinates
+        let isDraggingPlug = false;
+        let plugX = 250, plugY = 380; 
+        let startDragX = 0, startDragY = 0;
+
+        // Movable Component Vector Sets
+        let activeComponentDragging = null;
+        let compStartX = 0, compStartY = 0;
+
+        const viewport = document.getElementById('viewport');
+        const scene = document.getElementById('scene');
+        const powerPlug = document.getElementById('powerPlug');
+        const targetSocket = document.getElementById('targetSocket');
+        const wrapFan = document.getElementById('wrapFan');
+
+        // --- MOVABLE REGISTRATION SCHEMATICS ---
+        function setupDoubleClickHandler(element) {
+            element.addEventListener('dblclick', (e) => {
+                e.stopPropagation();
+                if (activeComponentDragging === element) {
+                    activeComponentDragging = null;
+                    element.classList.remove('draggable-active');
+                } else {
+                    if (activeComponentDragging) {
+                        activeComponentDragging.classList.remove('draggable-active');
+                    }
+                    activeComponentDragging = element;
+                    element.classList.add('draggable-active');
+                }
+            });
+        }
+
+        // Only register double click initialization for the Fan setup
+        setupDoubleClickHandler(wrapFan);
+
+        function getPointerCoords(e) {
+            if (e.touches && e.touches.length > 0) {
+                return { x: e.touches[0].clientX, y: e.touches[0].clientY };
+            }
+            return { x: e.clientX, y: e.clientY };
+        }
+
+        document.addEventListener('mousedown', onStartEngine);
+        document.addEventListener('mousemove', onMoveEngine);
+        document.addEventListener('mouseup', onEndEngine);
+        document.addEventListener('touchstart', onStartEngine, {passive: false});
+        document.addEventListener('touchmove', onMoveEngine, {passive: true});
+        document.addEventListener('touchend', onEndEngine);
+
+        function onStartEngine(e) {
+            if (e.target.closest('.dashboard') || e.target.closest('button') || e.target.closest('.socket-switch')) return;
+            
+            const coords = getPointerCoords(e);
+            const viewRect = viewport.getBoundingClientRect();
+
+            // Track isolated item positioning when double click lock is toggled
+            if (activeComponentDragging) {
+                const compRect = activeComponentDragging.getBoundingClientRect();
+                compStartX = coords.x - compRect.left;
+                compStartY = coords.y - compRect.top;
+                return;
+            }
+
+            // Track general cord/cable adapter item dragging mechanics
+            if (e.target.closest('#powerPlug')) {
+                if (isPluggedIn) {
+                    disconnectPlugSystem();
+                    return;
+                }
+                isDraggingPlug = true;
+                const rect = powerPlug.getBoundingClientRect();
+                startDragX = coords.x - (rect.left - viewRect.left);
+                startDragY = coords.y - (rect.top - viewRect.top);
+                if (e.cancelable) e.preventDefault();
+                return;
+            }
+
+            // Fallback orbit tracking mechanism
+            isDraggingBackground = true;
+            previousX = coords.x; 
+            previousY = coords.y;
+        }
+
+        function onMoveEngine(e) {
+            const coords = getPointerCoords(e);
+            const viewRect = viewport.getBoundingClientRect();
+
+            // Perform translation on individual active items
+            if (activeComponentDragging) {
+                let leftPos = ((coords.x - viewRect.left - compStartX) / viewRect.width) * 100;
+                let topPos = ((coords.y - viewRect.top - compStartY) / viewRect.height) * 100;
+                
+                activeComponentDragging.style.left = `${Math.max(0, Math.min(leftPos, 85))}%`;
+                activeComponentDragging.style.top = `${Math.max(0, Math.min(topPos, 80))}%`;
+                drawConnectingCable();
+                return;
+            }
+
+            // Track continuous updating layout path for the plug vector
+            if (isDraggingPlug && !isPluggedIn) {
+                let x = coords.x - viewRect.left - startDragX;
+                let y = coords.y - viewRect.top - startDragY;
+
+                plugX = Math.max(0, Math.min(viewRect.width - 56, x));
+                plugY = Math.max(0, Math.min(viewRect.height - 56, y));
+
+                powerPlug.style.left = `${plugX}px`;
+                powerPlug.style.top = `${plugY}px`;
+                drawConnectingCable();
+
+                const socketRect = targetSocket.getBoundingClientRect();
+                const plugRect = powerPlug.getBoundingClientRect();
+                const distance = Math.hypot(
+                    (plugRect.left + plugRect.width/2) - (socketRect.left + socketRect.width/2),
+                    (plugRect.top + plugRect.height/2) - (socketRect.top + socketRect.height/2)
+                );
+
+                if (distance < 60) {
+                    root.style.setProperty('--magnetic-glow', 'rgba(76, 217, 100, 0.4)');
+                    targetSocket.style.boxShadow = "inset 0 4px 8px rgba(0,0,0,0.08), 0 0 15px var(--magnetic-glow)";
+                } else {
+                    targetSocket.style.boxShadow = "inset 0 4px 8px rgba(0,0,0,0.08)";
+                }
+                return;
+            }
+
+            if (!isDraggingBackground) return;
+            let deltaX = coords.x - previousX;
+            let deltaY = coords.y - previousY;
+            currentRotateY += deltaX * 0.4;
+            currentTiltX = Math.max(-45, Math.min(45), currentTiltX - deltaY * 0.4);
+            root.style.setProperty('--rotate-y', `${currentRotateY}deg`);
+            root.style.setProperty('--tilt-x', `${currentTiltX}deg`);
+            previousX = coords.x; 
+            previousY = coords.y;
+            drawConnectingCable();
+        }
+
+        function onEndEngine() {
+            if (isDraggingPlug && !isPluggedIn) {
+                isDraggingPlug = false;
+                targetSocket.style.boxShadow = "inset 0 4px 8px rgba(0,0,0,0.08)";
+
+                const socketRect = targetSocket.getBoundingClientRect();
+                const plugRect = powerPlug.getBoundingClientRect();
+                const distance = Math.hypot(
+                    (plugRect.left + plugRect.width/2) - (socketRect.left + socketRect.width/2),
+                    (plugRect.top + plugRect.height/2) - (socketRect.top + socketRect.height/2)
+                );
+
+                if (distance < 60) connectPlugSystem();
+            }
+            isDraggingBackground = false;
+        }
+
+        function initAudio() {
+            if (audioCtx) return;
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            const bufferSize = 2 * audioCtx.sampleRate;
+            const noiseBuffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+            const output = noiseBuffer.getChannelData(0);
+            for (let i = 0; i < bufferSize; i++) output[i] = Math.random() * 2 - 1;
+
+            noiseSource = audioCtx.createBufferSource();
+            noiseSource.buffer = noiseBuffer;
+            noiseSource.loop = true;
+
+            biquadFilter = audioCtx.createBiquadFilter();
+            biquadFilter.type = "LOWPASS";
+
+            gainNode = audioCtx.createGain();
+            gainNode.gain.value = 0;
+
+            noiseSource.connect(biquadFilter);
+            biquadFilter.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+            noiseSource.start();
+        }
+
+        // --- HARDWARE POWER INTEGRATION SUBSYSTEMS ---
+        function connectPlugSystem() {
+            isPluggedIn = true;
+            const btn = document.getElementById('dashPlugBtn');
+            btn.innerText = "UNPLUG";
+            btn.classList.add('active-state');
+
+            powerPlug.classList.remove('unplugged-state');
+            powerPlug.classList.add('plugged-state');
+            
+            targetSocket.appendChild(powerPlug);
+            powerPlug.style.left = '12px'; 
+            powerPlug.style.top = '12px';
+
+            evaluateSystemPower();
+            setTimeout(drawConnectingCable, 50);
+        }
+
+        function disconnectPlugSystem() {
+            isPluggedIn = false;
+            const btn = document.getElementById('dashPlugBtn');
+            btn.innerText = "PLUG IN";
+            btn.classList.remove('active-state');
+
+            powerPlug.classList.remove('plugged-state');
+            powerPlug.classList.add('unplugged-state');
+            
+            viewport.appendChild(powerPlug);
+            
+            plugX = 250; plugY = 380;
+            powerPlug.style.left = `${plugX}px`;
+            powerPlug.style.top = `${plugY}px`;
+
+            evaluateSystemPower();
+            setTimeout(drawConnectingCable, 50);
+        }
+
+        function togglePlugAction(e) {
+            if(e) e.stopPropagation();
+            if (!isPluggedIn) connectPlugSystem();
+            else disconnectPlugSystem();
+        }
+
+        function toggleSwitchAction(e) {
+            if(e) e.stopPropagation();
+            const btn = document.getElementById('dashSwitchBtn');
+            const wallSw = document.getElementById('wallSwitch');
+            isSocketOn = !isSocketOn;
+
+            if (isSocketOn) {
+                btn.innerText = "TURN OFF";
+                btn.classList.add('active-state');
+                wallSw.classList.add('on-state');
+            } else {
+                btn.innerText = "TURN ON";
+                btn.classList.remove('active-state');
+                wallSw.classList.remove('on-state');
+            }
+            evaluateSystemPower();
+        }
+
+        function setSpeedEngine(speed, e) {
+            if(e) e.stopPropagation();
+            initAudio();
+            if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+
+            document.querySelectorAll('.speed-btn').forEach(btn => btn.classList.remove('active-state'));
+            document.getElementById(`dashSpeedBtn${speed}`).classList.add('active-state');
+
+            document.querySelectorAll('.btn-panel-vertical button').forEach(btn => btn.classList.remove('active'));
+            document.getElementById(`fanBtn${speed}`).classList.add('active');
+
+            selectedSpeed = speed;
+            evaluateSystemPower();
+        }
+
+        function evaluateSystemPower() {
+            if (isPluggedIn && isSocketOn && selectedSpeed > 0) {
+                root.style.setProperty('--indicator-color', '#4cd964');
+                switch(selectedSpeed) {
+                    case 1: targetSpeed = 5; root.style.setProperty('--vibrate-speed', '0.2s'); break;
+                    case 2: targetSpeed = 12;  root.style.setProperty('--vibrate-speed', '0.08s'); break;
+                    case 3: targetSpeed = 28;  root.style.setProperty('--vibrate-speed', '0.03s'); break;
+                }
+            } else {
+                targetSpeed = 0;
+                root.style.setProperty('--vibrate-speed', '0s');
+                root.style.setProperty('--indicator-color', (isPluggedIn && isSocketOn) ? '#ff3b30' : '#4b5563');
+            }
+        }
+
+        function drawConnectingCable() {
+            const base = document.getElementById('fanBase');
+            const path = document.getElementById('cablePath');
+
+            const plugRect = powerPlug.getBoundingClientRect();
+            const baseRect = base.getBoundingClientRect();
+            const viewRect = viewport.getBoundingClientRect();
+
+            const x1 = plugRect.left - viewRect.left + (plugRect.width / 2);
+            const y1 = plugRect.top - viewRect.top + plugRect.height - (isPluggedIn ? 15 : 0);
+            const x2 = baseRect.left - viewRect.left + (baseRect.width / 2);
+            const y2 = baseRect.top - viewRect.top + (baseRect.height / 2);
+
+            const controlY = Math.max(y1, y2) + 140; 
+            path.setAttribute('d', `M ${x1} ${y1} Q ${(x1 + x2) / 2} ${controlY} ${x2} ${y2}`);
+        }
+
+        function runPhysicsSimulationLoop() {
+            if (currentSpeed < targetSpeed) {
+                currentSpeed += acceleration;
+                if (currentSpeed > targetSpeed) currentSpeed = targetSpeed;
+            } else if (currentSpeed > targetSpeed) {
+                currentSpeed -= deceleration;
+                if (currentSpeed < targetSpeed) currentSpeed = targetSpeed;
+            }
+
+            currentRotation += currentSpeed;
+            if (currentRotation >= 360) currentRotation -= 360;
+            root.style.setProperty('--blade-rotation', `${currentRotation}deg`);
+
+            if (gainNode && biquadFilter) {
+                if (currentSpeed > 0.05) {
+                    gainNode.gain.value = Math.min(0.01 + (currentSpeed / 60), 0.3);
+                    biquadFilter.frequency.value = 110 + (currentSpeed * 15);
+                } else {
+                    gainNode.gain.value = 0;
+                }
+            }
+
+            drawConnectingCable();
+            requestAnimationFrame(runPhysicsSimulationLoop);
+        }
+
+        window.addEventListener('resize', drawConnectingCable);
+        setTimeout(drawConnectingCable, 200);
+        runPhysicsSimulationLoop();
+    </script>
+</body>
+</html>

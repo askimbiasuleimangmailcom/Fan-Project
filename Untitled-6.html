@@ -1,0 +1,569 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Desk Fan with Functional Extension Cord & Socket</title>
+    <style>
+        :root {
+            --blade-rotation: 0deg;
+            --vibrate-speed: 0s;
+            --indicator-color: #ff3b30;
+            --tilt-x: -15deg;
+            --rotate-y: -30deg;
+        }
+
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background-color: #dcdde1;
+            margin: 0;
+            font-family: 'Segoe UI', sans-serif;
+            user-select: none;
+            perspective: 1000px; /* Essential for 3D depth */
+            overflow: hidden;
+        }
+
+        /* 3D Scene Controller Container */
+        .scene-3d {
+            width: 800px;
+            height: 600px;
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            transform-style: preserve-3d;
+            transform: rotateX(var(--tilt-x)) rotateY(var(--rotate-y));
+            transition: transform 0.1s ease-out;
+        }
+
+        /* --- WALL SOCKET & SWITCH --- */
+        .wall-panel {
+            width: 140px;
+            height: 180px;
+            background: #f5f6fa;
+            border-radius: 12px;
+            box-shadow: 5px 10px 20px rgba(0,0,0,0.15), inset -2px -2px 5px rgba(0,0,0,0.1);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: space-around;
+            padding: 15px 0;
+            box-sizing: border-box;
+            transform: translateZ(-50px) rotateY(15deg);
+        }
+
+        .socket-outlets {
+            width: 60px;
+            height: 60px;
+            background: #e1e2e6;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 12px;
+            position: relative;
+            cursor: pointer;
+            border: 2px solid #ccc;
+        }
+
+        /* Three-prong holes */
+        .pin-hole { width: 8px; height: 12px; background: #2f3640; border-radius: 4px; }
+        .pin-hole.earth { position: absolute; top: 12px; width: 10px; height: 8px; }
+        .pin-hole.live { transform: translateY(8px); }
+        .pin-hole.neutral { transform: translateY(8px); }
+
+        .socket-switch {
+            width: 30px;
+            height: 45px;
+            background: #ced4da;
+            border-radius: 4px;
+            position: relative;
+            cursor: pointer;
+            box-shadow: inset 0 2px 5px rgba(0,0,0,0.2);
+        }
+
+        .switch-toggle {
+            width: 100%;
+            height: 22px;
+            background: #fff;
+            border-radius: 3px;
+            position: absolute;
+            top: 0;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            transition: top 0.1s ease;
+        }
+
+        .socket-switch.on .switch-toggle {
+            top: 23px;
+            background: #ff793f; /* Neon Glow when active */
+            box-shadow: 0 0 8px #ff793f;
+        }
+
+        /* --- EXTENSION CABLE PLUG --- */
+        .plug {
+            width: 45px;
+            height: 45px;
+            background: #2f3640;
+            border-radius: 6px 6px 20px 20px;
+            position: absolute;
+            cursor: grab;
+            z-index: 10;
+            box-shadow: 0 5px 10px rgba(0,0,0,0.3);
+            transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Plug positions: Unplugged vs Target Socket Fit */
+        .plug.unplugged { transform: translate(60px, 120px) rotateX(20deg); }
+        .plug.plugged { transform: translate(-235px, -33px) translateZ(-40px) rotateY(15deg); cursor: pointer; }
+
+        .plug-wire-stub {
+            width: 8px;
+            height: 40px;
+            background: #57606f;
+            position: absolute;
+            bottom: -35px;
+            border-radius: 4px;
+        }
+
+        /* Dynamic Connecting Wire wire simulation */
+        .cable-svg {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 5;
+        }
+
+        /* --- THE 3D FAN COMPONENT --- */
+        .fan-3d-model {
+            transform-style: preserve-3d;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            position: relative;
+        }
+
+        .fan-head-assembly {
+            position: relative;
+            animation: vibrate var(--vibrate-speed) linear infinite;
+            transform-style: preserve-3d;
+            z-index: 4;
+        }
+
+        /* Spherical 3D Cage Protection Covering */
+        .cage {
+            width: 275px;
+            height: 275px;
+            border: 6px solid #b8b8b8;
+            border-radius: 50%;
+            position: relative;
+            background: radial-gradient(circle, transparent 40%, rgba(255,255,255,0.1) 100%);
+            box-shadow: 0 15px 35px rgba(0,0,0,0.2);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            transform-style: preserve-3d;
+        }
+
+        /* Front Mesh Covering Array */
+        .grill-mesh {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            transform: translateZ(15px); /* Forces wire array in front of blades */
+            pointer-events: none;
+        }
+
+        .spoke {
+            position: absolute;
+            width: 100%;
+            height: 1.5px;
+            background: rgba(140, 140, 140, 0.4);
+            top: 50%;
+        }
+        .spoke-1  { transform: rotate(0deg); }
+        .spoke-2  { transform: rotate(22.5deg); }
+        .spoke-3  { transform: rotate(45deg); }
+        .spoke-4  { transform: rotate(67.5deg); }
+        .spoke-5  { transform: rotate(90deg); }
+        .spoke-6  { transform: rotate(112.5deg); }
+        .spoke-7  { transform: rotate(135deg); }
+        .spoke-8  { transform: rotate(157.5deg); }
+
+        .blade-assembly {
+            width: 250px;
+            height: 250px;
+            position: relative;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            transform: rotate(var(--blade-rotation)) translateZ(0px);
+        }
+
+        .blade {
+            position: absolute;
+            width: 72px;
+            height: 112px;
+            background: linear-gradient(135deg, #3a81d4, #1b4f8a);
+            opacity: 0.95;
+            border-radius: 50% 50% 42% 42% / 40% 40% 60% 60%;
+            transform-origin: bottom center;
+            box-shadow: inset -4px 0 10px rgba(0,0,0,0.2);
+        }
+
+        .blade-1 { transform: translateY(-56px) rotate(0deg); }
+        .blade-2 { transform: translateY(-56px) rotate(120deg); transform-origin: bottom center; }
+        .blade-3 { transform: translateY(-56px) rotate(240deg); transform-origin: bottom center; }
+
+        .center-cap {
+            position: absolute;
+            width: 55px;
+            height: 55px;
+            background: #f5f6fa;
+            border: 3px solid #bdc3c7;
+            border-radius: 50%;
+            transform: translateZ(20px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+        }
+
+        /* Curved 3D Tower Support Column */
+        .neck {
+            width: 60px;
+            height: 170px;
+            background: linear-gradient(to right, #f8f9fa, #dcdde1, #b2bec3);
+            margin-top: -6px;
+            clip-path: polygon(20% 0%, 80% 0%, 100% 100%, 0% 100%);
+            position: relative;
+            z-index: 2;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: space-between;
+            padding: 20px 0;
+            box-sizing: border-box;
+            box-shadow: inset 3px 0 8px rgba(255,255,255,0.8);
+        }
+
+        .indicator {
+            width: 9px;
+            height: 9px;
+            background-color: var(--indicator-color);
+            border-radius: 50%;
+            box-shadow: 0 0 10px var(--indicator-color);
+            transition: all 0.3s ease;
+        }
+
+        .btn-panel-vertical {
+            display: flex;
+            flex-direction: column;
+            gap: 9px;
+            background: rgba(0, 0, 0, 0.08);
+            padding: 10px 7px;
+            border-radius: 24px;
+            box-shadow: inset 0 2px 5px rgba(0,0,0,0.2);
+        }
+
+        .btn-panel-vertical button {
+            width: 26px;
+            height: 26px;
+            border: 1px solid #95a5a6;
+            border-radius: 50%;
+            background: linear-gradient(to bottom, #ffffff, #f1f2f6);
+            font-size: 11px;
+            font-weight: bold;
+            color: #2f3640;
+            cursor: pointer;
+            outline: none;
+            box-shadow: 0 3px 5px rgba(0,0,0,0.15);
+            transition: all 0.1s ease;
+        }
+
+        .btn-panel-vertical button:active, .btn-panel-vertical button.active {
+            background: linear-gradient(to bottom, #dcdde1, #b2bec3);
+            box-shadow: inset 0 2px 5px rgba(0,0,0,0.3);
+            transform: scale(0.92);
+        }
+
+        /* 3D Tiered Base Platform */
+        .base-group {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-top: -10px;
+            z-index: 1;
+            transform-style: preserve-3d;
+        }
+
+        .base-top {
+            width: 175px;
+            height: 18px;
+            background: linear-gradient(to right, #f1f2f6, #dcdde1, #b2bec3);
+            border-radius: 100px / 18px;
+        }
+
+        .base-bottom {
+            width: 240px;
+            height: 24px;
+            background: linear-gradient(to bottom, #dcdde1, #718093, #47505c);
+            border-radius: 100px / 24px;
+            margin-top: -10px;
+            box-shadow: 0 15px 30px rgba(0,0,0,0.3);
+        }
+
+        @keyframes vibrate {
+            0% { transform: translate(0, 0); }
+            25% { transform: translate(-0.5px, 0.5px); }
+            50% { transform: translate(0.5px, -0.5px); }
+            75% { transform: translate(-0.5px, -0.5px); }
+            100% { transform: translate(0, 0); }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Connection Cord Mapping Overlay -->
+    <svg class="cable-svg">
+        <path id="cablePath" d="" fill="none" stroke="#57606f" stroke-width="6" stroke-linecap="round"/>
+    </svg>
+
+    <div class="scene-3d" id="scene">
+        
+        <!-- ELECTRICAL INTERFACE UNIT -->
+        <div class="wall-panel">
+            <div class="socket-switch" id="wallSwitch" onclick="toggleSwitch()">
+                <div class="switch-toggle"></div>
+            </div>
+            <div class="socket-outlets" id="mainSocket" onclick="handlePlugInteraction()">
+                <div class="pin-hole earth"></div>
+                <div class="pin-hole live"></div>
+                <div class="pin-hole neutral"></div>
+            </div>
+        </div>
+
+        <!-- RELOCATABLE POWER PLUG -->
+        <div class="plug unplugged" id="powerPlug" onclick="handlePlugInteraction()">
+            <div class="plug-wire-stub"></div>
+        </div>
+
+        <!-- THE GENERATED 3D APPLIANCE MODEL -->
+        <div class="fan-3d-model">
+            <div class="fan-head-assembly" id="fanHead">
+                <div class="cage">
+                    <div class="grill-mesh">
+                        <div class="spoke spoke-1"></div>
+                        <div class="spoke spoke-2"></div>
+                        <div class="spoke spoke-3"></div>
+                        <div class="spoke spoke-4"></div>
+                        <div class="spoke spoke-5"></div>
+                        <div class="spoke spoke-6"></div>
+                        <div class="spoke spoke-7"></div>
+                        <div class="spoke spoke-8"></div>
+                    </div>
+
+                    <div class="blade-assembly" id="fanBlades">
+                        <div class="blade blade-1"></div>
+                        <div class="blade blade-2"></div>
+                        <div class="blade blade-3"></div>
+                    </div>
+                    <div class="center-cap"></div>
+                </div>
+            </div>
+
+            <div class="neck" id="fanNeck">
+                <div class="indicator" id="statusLight"></div>
+                <div class="btn-panel-vertical">
+                    <button onclick="changeSpeedSetting(0, this)" class="active">0</button>
+                    <button onclick="changeSpeedSetting(1, this)">1</button>
+                    <button onclick="changeSpeedSetting(2, this)">2</button>
+                    <button onclick="changeSpeedSetting(3, this)">3</button>
+                </div>
+            </div>
+
+            <div class="base-group">
+                <div class="base-top"></div>
+                <div class="base-bottom" id="fanBase"></div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        const root = document.documentElement;
+
+        // Logic & State Systems
+        let isPluggedIn = false;
+        let isSocketOn = false;
+        let activeSpeedButtonIndex = 0; 
+
+        let currentRotation = 0;
+        let currentSpeed = 0;   
+        let targetSpeed = 0;    
+        
+        const acceleration = 0.12; 
+        const deceleration = 0.04;
+
+        // Audio Synth Nodes
+        let audioCtx = null, biquadFilter = null, gainNode = null, noiseSource = null;
+
+        // Interactive 3D Orbit Camera control setup
+        let isDragging = false, previousX = 0, previousY = 0;
+        let currentRotateY = -30, currentTiltX = -15;
+
+        document.addEventListener('mousedown', (e) => {
+            if(e.target.closest('button') || e.target.closest('#mainSocket') || e.target.closest('#powerPlug') || e.target.closest('#wallSwitch')) return;
+            isDragging = true;
+            previousX = e.clientX;
+            previousY = e.clientY;
+        });
+
+        document.addEventListener('mousemove', (e) => {
+            if (!isDragging) return;
+            let deltaX = e.clientX - previousX;
+            let deltaY = e.clientY - previousY;
+            currentRotateY += deltaX * 0.4;
+            currentTiltX = Math.max(-45, Math.min(15, currentTiltX - deltaY * 0.4));
+            root.style.setProperty('--rotate-y', `${currentRotateY}deg`);
+            root.style.setProperty('--tilt-x', `${currentTiltX}deg`);
+            previousX = e.clientX;
+            previousY = e.clientY;
+            drawExtensionCable();
+        });
+
+        document.addEventListener('mouseup', () => isDragging = false);
+
+        function initAudio() {
+            if (audioCtx) return;
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            const bufferSize = 2 * audioCtx.sampleRate;
+            const noiseBuffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+            const output = noiseBuffer.getChannelData(0);
+            for (let i = 0; i < bufferSize; i++) output[i] = Math.random() * 2 - 1;
+
+            noiseSource = audioCtx.createBufferSource();
+            noiseSource.buffer = noiseBuffer;
+            noiseSource.loop = true;
+
+            biquadFilter = audioCtx.createBiquadFilter();
+            biquadFilter.type = "LOWPASS";
+
+            gainNode = audioCtx.createGain();
+            gainNode.gain.value = 0;
+
+            noiseSource.connect(biquadFilter);
+            biquadFilter.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+            noiseSource.start();
+        }
+
+        function handlePlugInteraction() {
+            const plug = document.getElementById('powerPlug');
+            isPluggedIn = !isPluggedIn;
+
+            if (isPluggedIn) {
+                plug.classList.remove('unplugged');
+                plug.classList.add('plugged');
+            } else {
+                plug.classList.remove('plugged');
+                plug.classList.add('unplugged');
+            }
+            setTimeout(drawExtensionCable, 320); // Sync redraw with plug animation finish
+            evaluateCircuitState();
+        }
+
+        function toggleSwitch() {
+            const sw = document.getElementById('wallSwitch');
+            isSocketOn = !isSocketOn;
+            sw.classList.toggle('on', isSocketOn);
+            evaluateCircuitState();
+        }
+
+        function changeSpeedSetting(speed, element) {
+            initAudio();
+            if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+
+            document.querySelectorAll('.btn-panel-vertical button').forEach(btn => btn.classList.remove('active'));
+            element.classList.add('active');
+            
+            activeSpeedButtonIndex = speed;
+            evaluateCircuitState();
+        }
+
+        // Central Processing Logic Core
+        function evaluateCircuitState() {
+            // Power criteria verification loop
+            if (isPluggedIn && isSocketOn && activeSpeedButtonIndex > 0) {
+                root.style.setProperty('--indicator-color', '#4cd964'); // Active Green
+                switch(activeSpeedButtonIndex) {
+                    case 1: targetSpeed = 4.5; root.style.setProperty('--vibrate-speed', '0.22s'); break;
+                    case 2: targetSpeed = 11;  root.style.setProperty('--vibrate-speed', '0.09s'); break;
+                    case 3: targetSpeed = 26;  root.style.setProperty('--vibrate-speed', '0.035s'); break;
+                }
+            } else {
+                // If system fails circuit metrics, target speed falls directly down to zero
+                targetSpeed = 0;
+                root.style.setProperty('--vibrate-speed', '0s');
+                root.style.setProperty('--indicator-color', (isPluggedIn && isSocketOn) ? '#ff3b30' : '#4b5563'); // Red standby vs dead grey
+            }
+        }
+
+        // Live Math Calculation rendering the flexible extension cord path
+        function drawExtensionCable() {
+            const plug = document.getElementById('powerPlug');
+            const base = document.getElementById('fanBase');
+            const path = document.getElementById('cablePath');
+
+            const plugRect = plug.getBoundingClientRect();
+            const baseRect = base.getBoundingClientRect();
+
+            // Core anchor vector offsets
+            const x1 = plugRect.left + (plugRect.width / 2);
+            const y1 = plugRect.top + plugRect.height - (isPluggedIn ? 15 : 0);
+            const x2 = baseRect.left + (baseRect.width / 2);
+            const y2 = baseRect.top + (baseRect.height / 2);
+
+            // Calculate slack sag mapping curves
+            const controlY = Math.max(y1, y2) + 120; 
+            path.setAttribute('d', `M ${x1} ${y1} Q ${(x1 + x2) / 2} ${controlY} ${x2} ${y2}`);
+        }
+
+        function updatePhysics() {
+            if (currentSpeed < targetSpeed) {
+                currentSpeed += acceleration;
+                if (currentSpeed > targetSpeed) currentSpeed = targetSpeed;
+            } else if (currentSpeed > targetSpeed) {
+                currentSpeed -= deceleration;
+                if (currentSpeed < targetSpeed) currentSpeed = targetSpeed;
+            }
+
+            currentRotation += currentSpeed;
+            if (currentRotation >= 360) currentRotation -= 360;
+            root.style.setProperty('--blade-rotation', `${currentRotation}deg`);
+
+            // Audio Frequency modulation
+            if (gainNode && biquadFilter) {
+                if (currentSpeed > 0.05) {
+                    gainNode.gain.value = Math.min(0.01 + (currentSpeed / 65), 0.35);
+                    biquadFilter.frequency.value = 100 + (currentSpeed * 14);
+                } else {
+                    gainNode.gain.value = 0;
+                }
+            }
+
+            drawExtensionCable();
+            requestAnimationFrame(updatePhysics);
+        }
+
+        window.addEventListener('resize', drawExtensionCable);
+        // Ignition
+        updatePhysics();
+    </script>
+</body>
+</html>

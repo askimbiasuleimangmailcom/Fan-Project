@@ -1,0 +1,646 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Desk Fan with Control Dashboard</title>
+    <style>
+        :root {
+            --blade-rotation: 0deg;
+            --vibrate-speed: 0s;
+            --indicator-color: #4b5563;
+            --tilt-x: -12deg;
+            --rotate-y: -25deg;
+        }
+
+        body {
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start;
+            align-items: center;
+            min-height: 100vh;
+            background-color: #dcdde1;
+            margin: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            user-select: none;
+            perspective: 1200px;
+            overflow: hidden;
+        }
+
+        /* --- MASTER CONTROL DASHBOARD --- */
+        .dashboard {
+            width: 100%;
+            max-width: 600px;
+            background: #ffffff;
+            margin-top: 20px;
+            padding: 15px 25px;
+            border-radius: 16px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.1);
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            z-index: 100;
+            box-sizing: border-box;
+        }
+
+        .dash-group {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .dash-label {
+            font-size: 11px;
+            font-weight: 800;
+            text-transform: uppercase;
+            color: #718093;
+            letter-spacing: 0.5px;
+        }
+
+        .dash-btn {
+            padding: 10px 18px;
+            font-size: 13px;
+            font-weight: bold;
+            border: 2px solid #dcdde1;
+            background: #f5f6fa;
+            color: #2f3640;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            outline: none;
+        }
+
+        .dash-btn:hover {
+            background: #e1e2e6;
+        }
+
+        .dash-btn.active-state {
+            background: #2f3640;
+            color: #fff;
+            border-color: #2f3640;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+        }
+
+        /* --- 3D ENVIRONMENT VIEWPORT --- */
+        .viewport-3d {
+            flex: 1;
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+        }
+
+        .scene-3d {
+            width: 800px;
+            height: 500px;
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            transform-style: preserve-3d;
+            transform: rotateX(var(--tilt-x)) rotateY(var(--rotate-y));
+        }
+
+        /* --- WALL SOCKET & SWITCH --- */
+        .wall-panel {
+            width: 130px;
+            height: 170px;
+            background: #f8f9fa;
+            border-radius: 12px;
+            box-shadow: 4px 8px 20px rgba(0,0,0,0.12), inset -1px -1px 4px rgba(0,0,0,0.05);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: space-around;
+            padding: 15px 0;
+            box-sizing: border-box;
+            transform: translateZ(-60px) rotateY(10deg);
+        }
+
+        .socket-outlets {
+            width: 55px;
+            height: 55px;
+            background: #e1e2e6;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+            border: 2px solid #ccc;
+        }
+
+        .pin-hole { width: 7px; height: 11px; background: #2f3640; border-radius: 3px; }
+        .pin-hole.earth { position: absolute; top: 10px; width: 9px; height: 7px; }
+        .pin-hole.live { transform: translate(10px, 6px); }
+        .pin-hole.neutral { transform: translate(-10px, 6px); }
+
+        .socket-switch {
+            width: 28px;
+            height: 40px;
+            background: #ced4da;
+            border-radius: 4px;
+            position: relative;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.15);
+        }
+
+        .switch-toggle {
+            width: 100%;
+            height: 18px;
+            background: #fff;
+            border-radius: 2px;
+            position: absolute;
+            top: 2px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.15);
+            transition: all 0.15s ease;
+        }
+
+        .socket-switch.on-state .switch-toggle {
+            top: 20px;
+            background: #ff793f;
+            box-shadow: 0 0 8px #ff793f;
+        }
+
+        /* --- PLUG & EXTENSION WIRE --- */
+        .plug {
+            width: 42px;
+            height: 42px;
+            background: #2f3640;
+            border-radius: 6px 6px 16px 16px;
+            position: absolute;
+            z-index: 10;
+            box-shadow: 0 6px 12px rgba(0,0,0,0.25);
+            transition: transform 0.4s cubic-bezier(0.25, 1, 0.5, 1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .plug.unplugged-state { transform: translate(60px, 90px) rotateX(15deg); }
+        .plug.plugged-state { transform: translate(-238px, -32px) translateZ(-50px) rotateY(10deg); }
+
+        .plug-wire-stub {
+            width: 8px;
+            height: 30px;
+            background: #57606f;
+            position: absolute;
+            bottom: -25px;
+            border-radius: 3px;
+        }
+
+        .cable-svg {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 5;
+        }
+
+        /* --- THE 3D FAN MODEL --- */
+        .fan-3d-model {
+            transform-style: preserve-3d;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            position: relative;
+        }
+
+        .fan-head-assembly {
+            position: relative;
+            animation: vibrate var(--vibrate-speed) linear infinite;
+            transform-style: preserve-3d;
+            z-index: 4;
+        }
+
+        .cage {
+            width: 270px;
+            height: 270px;
+            border: 6px solid #b8b8b8;
+            border-radius: 50%;
+            position: relative;
+            background: radial-gradient(circle, transparent 40%, rgba(255,255,255,0.1) 100%);
+            box-shadow: 0 15px 35px rgba(0,0,0,0.15);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            transform-style: preserve-3d;
+        }
+
+        .grill-mesh {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            transform: translateZ(12px);
+            pointer-events: none;
+        }
+
+        .spoke {
+            position: absolute;
+            width: 100%;
+            height: 1.5px;
+            background: rgba(140, 140, 140, 0.35);
+            top: 50%;
+        }
+        .spoke-1  { transform: rotate(0deg); }
+        .spoke-2  { transform: rotate(22.5deg); }
+        .spoke-3  { transform: rotate(45deg); }
+        .spoke-4  { transform: rotate(67.5deg); }
+        .spoke-5  { transform: rotate(90deg); }
+        .spoke-6  { transform: rotate(112.5deg); }
+        .spoke-7  { transform: rotate(135deg); }
+        .spoke-8  { transform: rotate(157.5deg); }
+
+        .blade-assembly {
+            width: 245px;
+            height: 245px;
+            position: relative;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            transform: rotate(var(--blade-rotation)) translateZ(0px);
+        }
+
+        .blade {
+            position: absolute;
+            width: 70px;
+            height: 110px;
+            background: linear-gradient(135deg, #3a81d4, #1b4f8a);
+            opacity: 0.95;
+            border-radius: 50% 50% 42% 42% / 40% 40% 60% 60%;
+            transform-origin: bottom center;
+            box-shadow: inset -4px 0 10px rgba(0,0,0,0.15);
+        }
+
+        .blade-1 { transform: translateY(-55px) rotate(0deg); }
+        .blade-2 { transform: translateY(-55px) rotate(120deg); }
+        .blade-3 { transform: translateY(-55px) rotate(240deg); }
+
+        .center-cap {
+            position: absolute;
+            width: 52px;
+            height: 52px;
+            background: #f5f6fa;
+            border: 3px solid #bdc3c7;
+            border-radius: 50%;
+            transform: translateZ(18px);
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        .neck {
+            width: 58px;
+            height: 165px;
+            background: linear-gradient(to right, #f8f9fa, #dcdde1, #b2bec3);
+            margin-top: -6px;
+            clip-path: polygon(20% 0%, 80% 0%, 100% 100%, 0% 100%);
+            position: relative;
+            z-index: 2;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: space-between;
+            padding: 20px 0;
+            box-sizing: border-box;
+        }
+
+        .indicator {
+            width: 9px;
+            height: 9px;
+            background-color: var(--indicator-color);
+            border-radius: 50%;
+            box-shadow: 0 0 10px var(--indicator-color);
+            transition: all 0.2s ease;
+        }
+
+        .btn-panel-vertical {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            background: rgba(0, 0, 0, 0.08);
+            padding: 10px 7px;
+            border-radius: 24px;
+            box-shadow: inset 0 2px 5px rgba(0,0,0,0.15);
+        }
+
+        .btn-panel-vertical button {
+            width: 25px;
+            height: 25px;
+            border: 1px solid #95a5a6;
+            border-radius: 50%;
+            background: linear-gradient(to bottom, #ffffff, #f1f2f6);
+            font-size: 11px;
+            font-weight: bold;
+            color: #2f3640;
+            cursor: pointer;
+            outline: none;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            transition: all 0.1s ease;
+        }
+
+        .btn-panel-vertical button.active {
+            background: linear-gradient(to bottom, #dcdde1, #b2bec3);
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.2);
+        }
+
+        .base-group {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-top: -10px;
+            z-index: 1;
+            transform-style: preserve-3d;
+        }
+
+        .base-top {
+            width: 170px;
+            height: 16px;
+            background: linear-gradient(to right, #f1f2f6, #dcdde1, #b2bec3);
+            border-radius: 100px / 16px;
+        }
+
+        .base-bottom {
+            width: 235px;
+            height: 22px;
+            background: linear-gradient(to bottom, #dcdde1, #718093, #47505c);
+            border-radius: 100px / 22px;
+            margin-top: -9px;
+            box-shadow: 0 12px 24px rgba(0,0,0,0.2);
+        }
+
+        @keyframes vibrate {
+            0% { transform: translate(0, 0); }
+            25% { transform: translate(-0.4px, 0.4px); }
+            50% { transform: translate(0.4px, -0.4px); }
+            75% { transform: translate(-0.4px, -0.4px); }
+            100% { transform: translate(0, 0); }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="dashboard">
+        <div class="dash-group">
+            <div class="dash-label">Extension Cord</div>
+            <button class="dash-btn" id="dashPlugBtn" onclick="togglePlugDashboard()">Plug In</button>
+        </div>
+
+        <div class="dash-group">
+            <div class="dash-label">Wall Socket</div>
+            <button class="dash-btn" id="dashSwitchBtn" onclick="toggleSwitchDashboard()">Turn ON</button>
+        </div>
+
+        <div class="dash-group">
+            <div class="dash-label">Fan Speed</div>
+            <div>
+                <button class="dash-btn speed-btn active-state" onclick="setSpeedDashboard(0, this)">0</button>
+                <button class="dash-btn speed-btn" onclick="setSpeedDashboard(1, this)">1</button>
+                <button class="dash-btn speed-btn" onclick="setSpeedDashboard(2, this)">2</button>
+                <button class="dash-btn speed-btn" onclick="setSpeedDashboard(3, this)">3</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="viewport-3d">
+        <svg class="cable-svg">
+            <path id="cablePath" d="" fill="none" stroke="#57606f" stroke-width="6" stroke-linecap="round"/>
+        </svg>
+
+        <div class="scene-3d" id="scene">
+            <div class="wall-panel">
+                <div class="socket-switch" id="wallSwitch">
+                    <div class="switch-toggle"></div>
+                </div>
+                <div class="socket-outlets">
+                    <div class="pin-hole earth"></div>
+                    <div class="pin-hole live"></div>
+                    <div class="pin-hole neutral"></div>
+                </div>
+            </div>
+
+            <div class="plug unplugged-state" id="powerPlug">
+                <div class="plug-wire-stub"></div>
+            </div>
+
+            <div class="fan-3d-model">
+                <div class="fan-head-assembly" id="fanHead">
+                    <div class="cage">
+                        <div class="grill-mesh">
+                            <div class="spoke spoke-1"></div>
+                            <div class="spoke spoke-2"></div>
+                            <div class="spoke spoke-3"></div>
+                            <div class="spoke spoke-4"></div>
+                            <div class="spoke spoke-5"></div>
+                            <div class="spoke spoke-6"></div>
+                            <div class="spoke spoke-7"></div>
+                            <div class="spoke spoke-8"></div>
+                        </div>
+                        <div class="blade-assembly" id="fanBlades">
+                            <div class="blade blade-1"></div>
+                            <div class="blade blade-2"></div>
+                            <div class="blade blade-3"></div>
+                        </div>
+                        <div class="center-cap"></div>
+                    </div>
+                </div>
+
+                <div class="neck">
+                    <div class="indicator" id="statusLight"></div>
+                    <div class="btn-panel-vertical">
+                        <button id="fanBtn0" class="active">0</button>
+                        <button id="fanBtn1">1</button>
+                        <button id="fanBtn2">2</button>
+                        <button id="fanBtn3">3</button>
+                    </div>
+                </div>
+
+                <div class="base-group">
+                    <div class="base-top"></div>
+                    <div class="base-bottom" id="fanBase"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const root = document.documentElement;
+
+        // Hardware State Variables
+        let isPluggedIn = false;
+        let isSocketOn = false;
+        let selectedSpeed = 0;
+
+        let currentRotation = 0;
+        let currentSpeed = 0;   
+        let targetSpeed = 0;    
+        const acceleration = 0.12; 
+        const deceleration = 0.04;
+
+        // Sound System Nodes
+        let audioCtx = null, biquadFilter = null, gainNode = null, noiseSource = null;
+
+        // Drag to view scene logic
+        let isDragging = false, previousX = 0, previousY = 0;
+        let currentRotateY = -25, currentTiltX = -12;
+
+        document.addEventListener('mousedown', (e) => {
+            if (e.target.closest('.dashboard') || e.target.closest('button')) return;
+            isDragging = true;
+            previousX = e.clientX; previousY = e.clientY;
+        });
+
+        document.addEventListener('mousemove', (e) => {
+            if (!isDragging) return;
+            let deltaX = e.clientX - previousX;
+            let deltaY = e.clientY - previousY;
+            currentRotateY += deltaX * 0.4;
+            currentTiltX = Math.max(-45, Math.min(15, currentTiltX - deltaY * 0.4));
+            root.style.setProperty('--rotate-y', `${currentRotateY}deg`);
+            root.style.setProperty('--tilt-x', `${currentTiltX}deg`);
+            previousX = e.clientX; previousY = e.clientY;
+            drawExtensionCable();
+        });
+
+        document.addEventListener('mouseup', () => isDragging = false);
+
+        function initAudio() {
+            if (audioCtx) return;
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            const bufferSize = 2 * audioCtx.sampleRate;
+            const noiseBuffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+            const output = noiseBuffer.getChannelData(0);
+            for (let i = 0; i < bufferSize; i++) output[i] = Math.random() * 2 - 1;
+
+            noiseSource = audioCtx.createBufferSource();
+            noiseSource.buffer = noiseBuffer;
+            noiseSource.loop = true;
+
+            biquadFilter = audioCtx.createBiquadFilter();
+            biquadFilter.type = "LOWPASS";
+
+            gainNode = audioCtx.createGain();
+            gainNode.gain.value = 0;
+
+            noiseSource.connect(biquadFilter);
+            biquadFilter.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+            noiseSource.start();
+        }
+
+        // --- DASHBOARD EVENT HANDLERS ---
+        function togglePlugDashboard() {
+            const btn = document.getElementById('dashPlugBtn');
+            const plug = document.getElementById('powerPlug');
+            isPluggedIn = !isPluggedIn;
+
+            if (isPluggedIn) {
+                btn.innerText = "Unplug";
+                btn.classList.add('active-state');
+                plug.classList.remove('unplugged-state');
+                plug.classList.add('plugged-state');
+            } else {
+                btn.innerText = "Plug In";
+                btn.classList.remove('active-state');
+                plug.classList.remove('plugged-state');
+                plug.classList.add('unplugged-state');
+            }
+            setTimeout(drawExtensionCable, 350); 
+            evaluateSystemPower();
+        }
+
+        function toggleSwitchDashboard() {
+            const btn = document.getElementById('dashSwitchBtn');
+            const wallSw = document.getElementById('wallSwitch');
+            isSocketOn = !isSocketOn;
+
+            if (isSocketOn) {
+                btn.innerText = "Turn OFF";
+                btn.classList.add('active-state');
+                wallSw.classList.add('on-state');
+            } else {
+                btn.innerText = "Turn ON";
+                btn.classList.remove('active-state');
+                wallSw.classList.remove('on-state');
+            }
+            evaluateSystemPower();
+        }
+
+        function setSpeedDashboard(speed, element) {
+            initAudio();
+            if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+
+            document.querySelectorAll('.speed-btn').forEach(btn => btn.classList.remove('active-state'));
+            element.classList.add('active-state');
+
+            document.querySelectorAll('.btn-panel-vertical button').forEach(btn => btn.classList.remove('active'));
+            document.getElementById(`fanBtn${speed}`).classList.add('active');
+
+            selectedSpeed = speed;
+            evaluateSystemPower();
+        }
+
+        // --- POWER MANAGEMENT ENGINE ---
+        function evaluateSystemPower() {
+            if (isPluggedIn && isSocketOn && selectedSpeed > 0) {
+                root.style.setProperty('--indicator-color', '#4cd964'); // Active Green
+                switch(selectedSpeed) {
+                    case 1: targetSpeed = 4.5; root.style.setProperty('--vibrate-speed', '0.22s'); break;
+                    case 2: targetSpeed = 11;  root.style.setProperty('--vibrate-speed', '0.09s'); break;
+                    case 3: targetSpeed = 26;  root.style.setProperty('--vibrate-speed', '0.035s'); break;
+                }
+            } else {
+                targetSpeed = 0;
+                root.style.setProperty('--vibrate-speed', '0s');
+                root.style.setProperty('--indicator-color', (isPluggedIn && isSocketOn) ? '#ff3b30' : '#4b5563'); 
+            }
+        }
+
+        function drawExtensionCable() {
+            const plug = document.getElementById('powerPlug');
+            const base = document.getElementById('fanBase');
+            const path = document.getElementById('cablePath');
+
+            const plugRect = plug.getBoundingClientRect();
+            const baseRect = base.getBoundingClientRect();
+
+            const x1 = plugRect.left + (plugRect.width / 2);
+            const y1 = plugRect.top + plugRect.height - (isPluggedIn ? 12 : 0);
+            const x2 = baseRect.left + (baseRect.width / 2);
+            const y2 = baseRect.top + (baseRect.height / 2);
+
+            const controlY = Math.max(y1, y2) + 100; 
+            path.setAttribute('d', `M ${x1} ${y1} Q ${(x1 + x2) / 2} ${controlY} ${x2} ${y2}`);
+        }
+
+        function updatePhysics() {
+            if (currentSpeed < targetSpeed) {
+                currentSpeed += acceleration;
+                if (currentSpeed > targetSpeed) currentSpeed = targetSpeed;
+            } else if (currentSpeed > targetSpeed) {
+                currentSpeed -= deceleration;
+                if (currentSpeed < targetSpeed) currentSpeed = targetSpeed;
+            }
+
+            currentRotation += currentSpeed;
+            if (currentRotation >= 360) currentRotation -= 360;
+            root.style.setProperty('--blade-rotation', `${currentRotation}deg`);
+
+            if (gainNode && biquadFilter) {
+                if (currentSpeed > 0.05) {
+                    gainNode.gain.value = Math.min(0.01 + (currentSpeed / 65), 0.35);
+                    biquadFilter.frequency.value = 100 + (currentSpeed * 14);
+                } else {
+                    gainNode.gain.value = 0;
+                }
+            }
+
+            drawExtensionCable();
+            requestAnimationFrame(updatePhysics);
+        }
+
+        window.addEventListener('resize', drawExtensionCable);
+        updatePhysics();
+    </script>
+</body>
+</html>

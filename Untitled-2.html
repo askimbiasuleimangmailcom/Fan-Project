@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Fan Speed Control</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      background: #f3f6fb;
+      color: #222;
+    }
+
+    .container {
+      text-align: center;
+    }
+
+    .fan {
+      width: 180px;
+      height: 180px;
+      margin: 0 auto 20px;
+      border-radius: 50%;
+      border: 10px solid #333;
+      position: relative;
+      background: radial-gradient(circle, #ddd 0%, #bbb 60%, #999 100%);
+      overflow: hidden;
+      animation: spin 1s linear infinite;
+      animation-play-state: paused;
+    }
+
+    .blade {
+      position: absolute;
+      width: 40px;
+      height: 80px;
+      background: linear-gradient(to bottom, #666, #222);
+      border-radius: 50% 50% 10px 10px;
+      top: 20px;
+      left: 50%;
+      transform-origin: center 70px;
+      transform: translateX(-50%);
+    }
+
+    .blade:nth-child(2) {
+      transform: translateX(-50%) rotate(120deg);
+    }
+
+    .blade:nth-child(3) {
+      transform: translateX(-50%) rotate(240deg);
+    }
+
+    .center {
+      position: absolute;
+      width: 40px;
+      height: 40px;
+      background: #222;
+      border-radius: 50%;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 2;
+    }
+
+    @keyframes spin {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+
+    .controls {
+      display: flex;
+      gap: 10px;
+      justify-content: center;
+      flex-wrap: wrap;
+      margin-top: 15px;
+    }
+
+    button {
+      padding: 12px 18px;
+      border: none;
+      border-radius: 10px;
+      background: #1f4b99;
+      color: white;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: 0.3s;
+    }
+
+    button:hover {
+      background: #163a75;
+    }
+
+    .status {
+      margin-top: 15px;
+      font-size: 1.1rem;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="fan" id="fan">
+      <div class="blade"></div>
+      <div class="blade"></div>
+      <div class="blade"></div>
+      <div class="center"></div>
+    </div>
+
+    <div class="controls">
+      <button id="toggleBtn">Turn Fan On</button>
+      <button id="slowerBtn">Slower</button>
+      <button id="fasterBtn">Faster</button>
+    </div>
+
+    <div class="status" id="status">Fan is OFF</div>
+    <div class="status" id="speedStatus">Speed: 1s</div>
+  </div>
+
+  <script>
+    const fan = document.getElementById("fan");
+    const toggleBtn = document.getElementById("toggleBtn");
+    const slowerBtn = document.getElementById("slowerBtn");
+    const fasterBtn = document.getElementById("fasterBtn");
+    const status = document.getElementById("status");
+    const speedStatus = document.getElementById("speedStatus");
+
+    let fanOn = false;
+    let speed = 1; // seconds per rotation
+
+    function updateFanSpeed() {
+      fan.style.animationDuration = speed + "s";
+      speedStatus.textContent = "Speed: " + speed.toFixed(1) + "s";
+    }
+
+    toggleBtn.addEventListener("click", () => {
+      fanOn = !fanOn;
+
+      if (fanOn) {
+        fan.style.animationPlayState = "running";
+        toggleBtn.textContent = "Turn Fan Off";
+        status.textContent = "Fan is ON";
+      } else {
+        fan.style.animationPlayState = "paused";
+        toggleBtn.textContent = "Turn Fan On";
+        status.textContent = "Fan is OFF";
+      }
+    });
+
+    fasterBtn.addEventListener("click", () => {
+      if (speed > 0.2) {
+        speed -= 0.2;
+        updateFanSpeed();
+      }
+    });
+
+    slowerBtn.addEventListener("click", () => {
+      if (speed < 3) {
+        speed += 0.2;
+        updateFanSpeed();
+      }
+    });
+
+    updateFanSpeed();
+  </script>
+</body>
+</html>

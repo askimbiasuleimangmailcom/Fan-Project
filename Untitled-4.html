@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Electric Desk Fan</title>
+    <style>
+        :root {
+            --blade-speed: 0s;
+            --indicator-color: #ff3b30; /* Starts as Red (Off) */
+        }
+
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background-color: #f0f2f5;
+            margin: 0;
+            font-family: Arial, sans-serif;
+        }
+
+        .fan-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            position: relative;
+        }
+
+        /* Fan Guard / Outer Cage */
+        .cage {
+            width: 300px;
+            height: 300px;
+            border: 6px solid #ccc;
+            border-radius: 50%;
+            position: relative;
+            background: radial-gradient(circle, transparent 40%, rgba(200,200,200,0.1) 100%);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.15);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 2;
+        }
+
+        /* Radial Spokes lines of the cage */
+        .cage::before, .cage::after {
+            content: '';
+            position: absolute;
+            background: rgba(200, 200, 200, 0.6);
+        }
+        .cage::before { width: 100%; height: 2px; }
+        .cage::after { width: 2px; height: 100%; }
+
+        /* Rotating Blade Assembly */
+        .blade-assembly {
+            width: 260px;
+            height: 260px;
+            position: relative;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            animation: spin var(--blade-speed) linear infinite;
+        }
+
+        /* Individual Fan Blades */
+        .blade {
+            position: absolute;
+            width: 70px;
+            height: 110px;
+            background: linear-gradient(135deg, #4a90e2, #357abd);
+            opacity: 0.85;
+            border-radius: 50% 50% 40% 40% / 40% 40% 60% 60%;
+            transform-origin: bottom center;
+        }
+
+        .blade-1 { transform: translateY(-55px) rotate(0deg); }
+        .blade-2 { transform: translateY(-55px) rotate(120deg); transform-origin: bottom center; }
+        .blade-3 { transform: translateY(-55px) rotate(240deg); transform-origin: bottom center; }
+
+        /* Center Cap */
+        .center-cap {
+            position: absolute;
+            width: 60px;
+            height: 60px;
+            background: #e6e6e6;
+            border: 2px solid #b3b3b3;
+            border-radius: 50%;
+            z-index: 3;
+            box-shadow: inset 0 2px 5px rgba(255,255,255,0.8), 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        /* Fan Stand / Neck */
+        .neck {
+            width: 40px;
+            height: 100px;
+            background: linear-gradient(to right, #e6e6e6, #cccccc, #b3b3b3);
+            margin-top: -5px;
+            border-radius: 0 0 5px 5px;
+            position: relative;
+            z-index: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding-top: 10px;
+        }
+
+        /* LED Status Indicator */
+        .indicator {
+            width: 10px;
+            height: 10px;
+            background-color: var(--indicator-color);
+            border-radius: 50%;
+            box-shadow: 0 0 8px var(--indicator-color);
+            transition: all 0.3s ease;
+        }
+
+        /* Control Panel Buttons */
+        .btn-panel {
+            display: flex;
+            gap: 6px;
+            background: #b3b3b3;
+            padding: 4px;
+            border-radius: 4px;
+        }
+
+        .btn-panel button {
+            width: 24px;
+            height: 24px;
+            border: 1px solid #999;
+            border-radius: 50%;
+            background: #f0f0f0;
+            font-size: 10px;
+            font-weight: bold;
+            cursor: pointer;
+            outline: none;
+            box-shadow: 0 2px 2px rgba(0,0,0,0.2);
+            transition: transform 0.1s, background-color 0.2s;
+        }
+
+        .btn-panel button:active, .btn-panel button.active {
+            transform: scale(0.9);
+            background: #dddddd;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.3);
+        }
+
+        /* Fan Base */
+        .base {
+            width: 180px;
+            height: 20px;
+            background: linear-gradient(to bottom, #e6e6e6, #b3b3b3);
+            border-radius: 100px / 20px;
+            box-shadow: 0 8px 15px rgba(0,0,0,0.2);
+            z-index: 1;
+        }
+
+        /* Rotation Keyframe */
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="fan-container">
+        <div class="cage">
+            <div class="blade-assembly" id="fanBlades">
+                <div class="blade blade-1"></div>
+                <div class="blade blade-2"></div>
+                <div class="blade blade-3"></div>
+            </div>
+            <div class="center-cap"></div>
+        </div>
+
+        <div class="neck">
+            <div class="indicator" id="statusLight"></div>
+            <div class="btn-panel">
+                <button onclick="setSpeed(0, this)" class="active">0</button>
+                <button onclick="setSpeed(1, this)">1</button>
+                <button onclick="setSpeed(2, this)">2</button>
+                <button onclick="setSpeed(3, this)">3</button>
+            </div>
+        </div>
+
+        <div class="base"></div>
+    </div>
+
+    <script>
+        function setSpeed(speedLevel, element) {
+            const root = document.documentElement;
+            
+            // Remove 'active' styling class from all control panel buttons
+            document.querySelectorAll('.btn-panel button').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            
+            // Highlight the currently selected button
+            element.classList.add('active');
+
+            // Adjust animation duration and status LED color based on speed selection
+            switch(speedLevel) {
+                case 1:
+                    root.style.setProperty('--blade-speed', '1.2s'); // Low speed
+                    root.style.setProperty('--indicator-color', '#4cd964'); // Green (On)
+                    break;
+                case 2:
+                    root.style.setProperty('--blade-speed', '0.6s'); // Medium speed
+                    root.style.setProperty('--indicator-color', '#4cd964');
+                    break;
+                case 3:
+                    root.style.setProperty('--blade-speed', '0.2s'); // High speed
+                    root.style.setProperty('--indicator-color', '#4cd964');
+                    break;
+                case 0:
+default:
+                    root.style.setProperty('--blade-speed', '0s');   // Stop engine
+                    root.style.setProperty('--indicator-color', '#ff3b30'); // Red (Off)
+                    break;
+            }
+        }
+    </script>
+
+</body>
+</html>
